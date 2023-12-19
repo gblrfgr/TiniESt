@@ -1,5 +1,5 @@
 # TiniESt
-An embedded interpreter for a usable subset of the ECMAScript 5 standard, aiming to have an intuitive, modern C++ interface while using as little memory as possible
+An embedded interpreter for a usable subset of the ECMAScript 5.1 standard, aiming to have an intuitive, modern C++ interface while using as little memory as possible
 
 ## Design Goals
 - Intuitive C++17 interface making use of modern features
