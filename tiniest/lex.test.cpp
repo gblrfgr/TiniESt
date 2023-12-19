@@ -60,3 +60,55 @@ TEST_CASE("next_utf8 behaves correctly") {
     }
   }
 }
+
+TEST_CASE("is_whitespace behaves correctly") {
+  SECTION("Basic types") {
+    REQUIRE(es::is_whitespace(0x09));
+    REQUIRE(es::is_whitespace(0x0B));
+    REQUIRE(es::is_whitespace(0x0C));
+    REQUIRE(es::is_whitespace(0x20));
+    REQUIRE(es::is_whitespace(0xA0));
+    REQUIRE(es::is_whitespace(0xFEFF));
+  }
+
+  SECTION("Various widths of spaces") {
+    REQUIRE(es::is_whitespace(0x2000));
+    REQUIRE(es::is_whitespace(0x2001));
+    REQUIRE(es::is_whitespace(0x2002));
+    REQUIRE(es::is_whitespace(0x2003));
+    REQUIRE(es::is_whitespace(0x2004));
+    REQUIRE(es::is_whitespace(0x2005));
+    REQUIRE(es::is_whitespace(0x2006));
+    REQUIRE(es::is_whitespace(0x2007));
+    REQUIRE(es::is_whitespace(0x2008));
+    REQUIRE(es::is_whitespace(0x2009));
+    REQUIRE(es::is_whitespace(0x200A));
+  }
+
+  SECTION("Other unicode spaces") {
+    REQUIRE(es::is_whitespace(0x1680));
+    REQUIRE(es::is_whitespace(0x202F));
+    REQUIRE(es::is_whitespace(0x205F));
+    REQUIRE(es::is_whitespace(0x3000));
+  }
+
+  SECTION("Non-whitespace characters") {
+    REQUIRE(!es::is_whitespace(0x00));
+    REQUIRE(!es::is_whitespace(0x01));
+    REQUIRE(!es::is_whitespace(0x02));
+    REQUIRE(!es::is_whitespace(0x03));
+    REQUIRE(!es::is_whitespace(0x04));
+    REQUIRE(!es::is_whitespace(0x05));
+    REQUIRE(!es::is_whitespace(0x06));
+    REQUIRE(!es::is_whitespace(0x07));
+    REQUIRE(!es::is_whitespace(0x08));
+    REQUIRE(!es::is_whitespace(0x0A));
+    REQUIRE(!es::is_whitespace(0x0D));
+    REQUIRE(!es::is_whitespace(0x0E));
+    REQUIRE(!es::is_whitespace(0x0F));
+    REQUIRE(!es::is_whitespace(0x10));
+    REQUIRE(!es::is_whitespace(0x11));
+    REQUIRE(!es::is_whitespace(0x12));
+    REQUIRE(!es::is_whitespace(0x13));
+  }
+}

@@ -11,7 +11,14 @@ using unicode_char = std::uint32_t; // unicode codepoint
 /// ~0 if the string is nullptr or invalid.
 /// @param cursor Reference to a pointer to the current position in the string.
 /// @return The next unicode character.
-unicode_char next_utf8(const char *&cursor);
+[[nodiscard]] unicode_char next_utf8(const char *&cursor) noexcept;
+
+/// @brief Determine if a unicode character is whitespace according to the
+/// ECMAScript 5.1 specification. This includes spaces and tabs, but not line
+/// separators (for the most part).
+/// @param chr The unicode character to check.
+/// @return A bool indicating whether the character is whitespace.
+[[nodiscard]] bool is_whitespace(unicode_char chr) noexcept;
 
 } // namespace es
 

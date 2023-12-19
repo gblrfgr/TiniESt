@@ -1,7 +1,8 @@
+#include "lex.hpp"
 #include <cstddef>
 #include <tiniest/lex.hpp>
 
-es::unicode_char es::next_utf8(const char *&cursor) {
+es::unicode_char es::next_utf8(const char *&cursor) noexcept {
   if (cursor == nullptr) {
     return ~0;
   }
@@ -33,4 +34,19 @@ es::unicode_char es::next_utf8(const char *&cursor) {
     cursor++;
   }
   return accumulator;
+}
+
+bool es::is_whitespace(es::unicode_char chr) noexcept {
+  if (chr == 0x09 || chr == 0x0B || chr == 0x0C || chr == 0x20 || chr == 0xA0 ||
+      chr == 0xFEFF) {
+    // basic types mentioned in the spec
+    return true;
+  } else if (chr >= 0x2000 && chr <= 0x200A) {
+    // various widths of spaces
+    return true;
+  } else if (chr == 0x1680 || chr == 0x202F || chr == 0x205F || chr == 0x3000) {
+    // other unicode spaces
+    return true;
+  }
+  return false;
 }
