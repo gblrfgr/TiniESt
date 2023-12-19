@@ -7,7 +7,8 @@ namespace es {
 
 using unicode_char = std::uint32_t; // unicode codepoint
 
-/// @brief Get the next unicode character from a UTF-8 encoded string.
+/// @brief Get the next unicode character from a UTF-8 encoded string. Returns
+/// ~0 if the string is nullptr or invalid.
 /// @param cursor Reference to a pointer to the current position in the string.
 /// @return The next unicode character.
 unicode_char next_utf8(const char *&cursor);
