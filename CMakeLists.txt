@@ -23,11 +23,11 @@ FetchContent_MakeAvailable(Catch2)
 
 set(TEST_SOURCES "tiniest/lex.test.cpp")
 
-add_executable(tests ${TEST_SOURCES})
+add_executable(tests ${TEST_SOURCES} ${SOURCES})
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 
 # Add library target
-include_directories(${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
+include_directories(${PROJECT_SOURCE_DIR})
 add_library(${PROJECT_NAME} ${SOURCES})
 
 # Set library properties
