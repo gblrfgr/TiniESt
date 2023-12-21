@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <tiniest/lex.hpp>
 
-es::unicode_char es::next_utf8(const char *&cursor) noexcept {
+es::unicode_char es::next_utf8(const std::uint8_t *&cursor) noexcept {
   if (cursor == nullptr) {
     return ~0;
   }
@@ -34,6 +34,51 @@ es::unicode_char es::next_utf8(const char *&cursor) noexcept {
     cursor++;
   }
   return accumulator;
+}
+
+void es::put_utf8(es::unicode_char chr, std::uint8_t *&cursor,
+                  std::size_t &space_remaining) noexcept {
+  if (cursor == nullptr || space_remaining == 0 || chr > 0x10FFFF) {
+    return;
+  }
+  if (chr >= 0x10000) {
+    if (space_remaining < 4) {
+      return;
+    }
+    *cursor = 0b11110000 | (chr >> 18);
+    cursor++;
+    *cursor = 0b10000000 | ((chr >> 12) & 0b00111111);
+    cursor++;
+    *cursor = 0b10000000 | ((chr >> 6) & 0b00111111);
+    cursor++;
+    *cursor = 0b10000000 | (chr & 0b00111111);
+    cursor++;
+    space_remaining -= 4;
+  } else if (chr >= 0x800) {
+    if (space_remaining < 3) {
+      return;
+    }
+    *cursor = 0b11100000 | (chr >> 12);
+    cursor++;
+    *cursor = 0b10000000 | ((chr >> 6) & 0b00111111);
+    cursor++;
+    *cursor = 0b10000000 | (chr & 0b00111111);
+    cursor++;
+    space_remaining -= 3;
+  } else if (chr >= 0x80) {
+    if (space_remaining < 2) {
+      return;
+    }
+    *cursor = 0b11000000 | (chr >> 6);
+    cursor++;
+    *cursor = 0b10000000 | (chr & 0b00111111);
+    cursor++;
+    space_remaining -= 2;
+  } else {
+    *cursor = chr;
+    cursor++;
+    space_remaining--;
+  }
 }
 
 bool es::is_whitespace(es::unicode_char chr) noexcept {

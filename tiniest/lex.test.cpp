@@ -3,55 +3,55 @@
 
 TEST_CASE("next_utf8 behaves correctly") {
   SECTION("Single-byte UTF-8 character") {
-    const char *input = "A";
+    const std::uint8_t *input = (std::uint8_t *) "A";
     const es::unicode_char expected = 'A';
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Two-byte UTF-8 character") {
-    const char *input = u8"¢";
+    const std::uint8_t *input = (std::uint8_t *) u8"¢";
     const es::unicode_char expected = 0x00A2;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Three-byte UTF-8 character") {
-    const char *input = u8"€";
+    const std::uint8_t *input = (std::uint8_t *) u8"€";
     const es::unicode_char expected = 0x20AC;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Four-byte UTF-8 character") {
-    const char *input = u8"𐍈";
+    const std::uint8_t *input = (std::uint8_t *) u8"𐍈";
     const es::unicode_char expected = 0x10348;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Invalid UTF-8 character") {
-    const char *input = "\xFF";
+    const std::uint8_t *input = (std::uint8_t *) "\xFF";
     const es::unicode_char expected = ~0;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Empty string") {
-    const char *input = "";
+    const std::uint8_t *input = (std::uint8_t *) "";
     const es::unicode_char expected = 0;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Buffer underflow") {
-    const char *input = "\xC2";
+    const std::uint8_t *input = (std::uint8_t *) "\xC2";
     const es::unicode_char expected = ~0;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Null pointer") {
-    const char *input = nullptr;
+    const std::uint8_t *input = nullptr;
     const es::unicode_char expected = ~0;
     REQUIRE(es::next_utf8(input) == expected);
   }
 
   SECTION("Longer section of text") {
-    const char *input = u8"Я люблю колбасу";
+    const std::uint8_t *input = (std::uint8_t *) u8"Я люблю колбасу";
     const es::unicode_char expected[] = {
         0x042F, 0x0020, 0x043B, 0x044E, 0x0431, 0x043B, 0x044E, 0x0020,
         0x043A, 0x043E, 0x043B, 0x0431, 0x0430, 0x0441, 0x0443, 0x00};
@@ -110,5 +110,71 @@ TEST_CASE("is_whitespace behaves correctly") {
     REQUIRE(!es::is_whitespace(0x11));
     REQUIRE(!es::is_whitespace(0x12));
     REQUIRE(!es::is_whitespace(0x13));
+  }
+}
+
+TEST_CASE("put_utf8 behaves correctly") {
+  SECTION("Single-byte UTF-8 character") {
+    std::uint8_t buffer[1];
+    std::uint8_t* cursor = buffer;
+    std::size_t space_remaining = 1;
+    es::put_utf8('A', cursor, space_remaining);
+    REQUIRE(buffer[0] == 'A');
+    REQUIRE(cursor == buffer + 1);
+    REQUIRE(space_remaining == 0);
+  }
+
+  SECTION("Two-byte UTF-8 character") {
+    std::uint8_t buffer[2];
+    std::uint8_t* cursor = buffer;
+    std::size_t space_remaining = 2;
+    es::put_utf8(0x00A2, cursor, space_remaining);
+    REQUIRE(buffer[0] == 0xC2);
+    REQUIRE(buffer[1] == 0xA2);
+    REQUIRE(cursor == buffer + 2);
+    REQUIRE(space_remaining == 0);
+  }
+
+  SECTION("Three-byte UTF-8 character") {
+    std::uint8_t buffer[3];
+    std::uint8_t* cursor = buffer;
+    std::size_t space_remaining = 3;
+    es::put_utf8(0x20AC, cursor, space_remaining);
+    REQUIRE(buffer[0] == 0xE2);
+    REQUIRE(buffer[1] == 0x82);
+    REQUIRE(buffer[2] == 0xAC);
+    REQUIRE(cursor == buffer + 3);
+    REQUIRE(space_remaining == 0);
+  }
+
+  SECTION("Four-byte UTF-8 character") {
+    std::uint8_t buffer[4];
+    std::uint8_t* cursor = buffer;
+    std::size_t space_remaining = 4;
+    es::put_utf8(0x10348, cursor, space_remaining);
+    REQUIRE(buffer[0] == 0xF0);
+    REQUIRE(buffer[1] == 0x90);
+    REQUIRE(buffer[2] == 0x8D);
+    REQUIRE(buffer[3] == 0x88);
+    REQUIRE(cursor == buffer + 4);
+    REQUIRE(space_remaining == 0);
+  }
+
+  SECTION("Invalid UTF-8 character") {
+    std::uint8_t buffer[1];
+    std::uint8_t* cursor = buffer;
+    std::size_t space_remaining = 1;
+    es::put_utf8(0x110000, cursor, space_remaining);
+    REQUIRE(cursor == buffer);
+    REQUIRE(space_remaining == 1);
+  }
+
+  SECTION("Buffer overflow") {
+    std::uint8_t buffer[1];
+    std::uint8_t* cursor = buffer;
+    std::size_t space_remaining = 1;
+    es::put_utf8(0x20AC, cursor, space_remaining);
+    REQUIRE(cursor == buffer);
+    REQUIRE(space_remaining == 1);
   }
 }
