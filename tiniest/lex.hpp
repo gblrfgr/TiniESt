@@ -30,6 +30,12 @@ void put_utf8(unicode_char chr, std::uint8_t *&cursor,
 /// @return A bool indicating whether the character is whitespace.
 [[nodiscard]] bool is_whitespace(unicode_char chr) noexcept;
 
+/// @brief Determine if a unicode character is a line terminator according to
+/// the ECMAScript 5.1 specification.
+/// @param chr The unicode character to check.
+/// @return A bool indicating whether the character is a line terminator.
+[[nodiscard]] bool is_line_terminator(unicode_char chr) noexcept;
+
 } // namespace es
 
 #endif // TINIEST_LEX_HPP

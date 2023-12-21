@@ -178,3 +178,36 @@ TEST_CASE("put_utf8 behaves correctly") {
     REQUIRE(space_remaining == 1);
   }
 }
+
+TEST_CASE("is_line_terminator behaves correctly") {
+  SECTION("Basic types") {
+    REQUIRE(es::is_line_terminator(0x0A));
+    REQUIRE(es::is_line_terminator(0x0D));
+  }
+
+  SECTION("Other unicode line terminators") {
+    REQUIRE(es::is_line_terminator(0x2028));
+    REQUIRE(es::is_line_terminator(0x2029));
+  }
+
+  SECTION("Non-line-terminator characters") {
+    REQUIRE(!es::is_line_terminator(0x00));
+    REQUIRE(!es::is_line_terminator(0x01));
+    REQUIRE(!es::is_line_terminator(0x02));
+    REQUIRE(!es::is_line_terminator(0x03));
+    REQUIRE(!es::is_line_terminator(0x04));
+    REQUIRE(!es::is_line_terminator(0x05));
+    REQUIRE(!es::is_line_terminator(0x06));
+    REQUIRE(!es::is_line_terminator(0x07));
+    REQUIRE(!es::is_line_terminator(0x08));
+    REQUIRE(!es::is_line_terminator(0x09));
+    REQUIRE(!es::is_line_terminator(0x0B));
+    REQUIRE(!es::is_line_terminator(0x0C));
+    REQUIRE(!es::is_line_terminator(0x0E));
+    REQUIRE(!es::is_line_terminator(0x0F));
+    REQUIRE(!es::is_line_terminator(0x10));
+    REQUIRE(!es::is_line_terminator(0x11));
+    REQUIRE(!es::is_line_terminator(0x12));
+    REQUIRE(!es::is_line_terminator(0x13));
+  }
+}

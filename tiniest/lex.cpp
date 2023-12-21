@@ -95,3 +95,7 @@ bool es::is_whitespace(es::unicode_char chr) noexcept {
   }
   return false;
 }
+
+bool es::is_line_terminator(es::unicode_char chr) noexcept {
+  return (chr == 0x0A) || (chr == 0x0D) || (chr == 0x2028) || (chr == 0x2029);
+}
