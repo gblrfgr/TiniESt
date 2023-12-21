@@ -1,8 +1,8 @@
 #ifndef TINIEST_LEX_HPP
 #define TINIEST_LEX_HPP
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace es {
 
@@ -35,6 +35,28 @@ void put_utf8(unicode_char chr, std::uint8_t *&cursor,
 /// @param chr The unicode character to check.
 /// @return A bool indicating whether the character is a line terminator.
 [[nodiscard]] bool is_line_terminator(unicode_char chr) noexcept;
+
+/// @brief Represents a single ECMAScript token.
+struct Token {
+  enum class Type {
+    IDENTIFIER,
+    NUMBER,
+    STRING,
+    PUNCTUATOR,
+    END_OF_FILE,
+    ERROR
+  };
+  Type type;
+  std::size_t line;
+  std::size_t column;
+  std::size_t length; // bytes
+  const std::uint8_t *start;
+
+  Token() = default;
+  Token(Type type, std::size_t line, std::size_t column, std::size_t length,
+        const std::uint8_t *start)
+      : type(type), line(line), column(column), length(length), start(start) {}
+};
 
 } // namespace es
 
