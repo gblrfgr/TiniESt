@@ -39,7 +39,7 @@ void put_utf8(unicode_char chr, std::uint8_t *&cursor,
 /// @brief Represents a single ECMAScript token.
 struct Token {
   enum class Type {
-    IDENTIFIER,
+    IDENTIFIER_OR_KEYWORD,
     NUMBER,
     STRING,
     PUNCTUATOR,
@@ -52,11 +52,17 @@ struct Token {
   std::size_t length; // bytes
   const std::uint8_t *start;
 
-  Token() = default;
+  Token() = delete;
   Token(Type type, std::size_t line, std::size_t column, std::size_t length,
         const std::uint8_t *start)
       : type(type), line(line), column(column), length(length), start(start) {}
 };
+
+/// @brief Retrieves the next ECMAScript token from a UTF-8 encoded string.
+/// Skips whitespace and comments.
+/// @param buffer The string buffer to read from.
+/// @return The next token.
+[[nodiscard]] Token next_token(std::uint8_t *buffer) noexcept;
 
 } // namespace es
 
