@@ -62,7 +62,7 @@ struct Token {
 /// Skips whitespace and comments.
 /// @param buffer The string buffer to read from.
 /// @return The next token.
-[[nodiscard]] Token next_token(std::uint8_t *buffer) noexcept;
+[[nodiscard]] Token next_token(std::uint8_t *&buffer) noexcept;
 
 } // namespace es
 
