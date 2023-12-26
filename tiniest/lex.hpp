@@ -3,66 +3,173 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace es {
 
-using unicode_char = std::uint32_t; // unicode codepoint
+[[nodiscard]] bool is_whitespace(char chr) noexcept;
 
-/// @brief Get the next unicode character from a UTF-8 encoded string. Returns
-/// ~0 if the string is nullptr or invalid.
-/// @param cursor Reference to a pointer to the current position in the string.
-/// @return The next unicode character.
-[[nodiscard]] unicode_char next_utf8(const std::uint8_t *&cursor) noexcept;
+[[nodiscard]] bool is_line_terminator(char chr) noexcept;
 
-/// @brief Put a unicode character into a UTF-8 encoded string.
-/// @param chr The character to put.
-/// @param cursor The current position in the string buffer. Will be updated if
-/// there is sufficient space for the character.
-/// @param space_remaining The remaining space in the string buffer. Will be
-/// updated if there is sufficient space for the character.
-void put_utf8(unicode_char chr, std::uint8_t *&cursor,
-              std::size_t &space_remaining) noexcept;
-
-/// @brief Determine if a unicode character is whitespace according to the
-/// ECMAScript 5.1 specification. This includes spaces and tabs, but not line
-/// separators (for the most part).
-/// @param chr The unicode character to check.
-/// @return A bool indicating whether the character is whitespace.
-[[nodiscard]] bool is_whitespace(unicode_char chr) noexcept;
-
-/// @brief Determine if a unicode character is a line terminator according to
-/// the ECMAScript 5.1 specification.
-/// @param chr The unicode character to check.
-/// @return A bool indicating whether the character is a line terminator.
-[[nodiscard]] bool is_line_terminator(unicode_char chr) noexcept;
+[[nodiscard]] bool is_identifier_start(char chr) noexcept;
 
 /// @brief Represents a single ECMAScript token.
 struct Token {
   enum class Type {
-    IDENTIFIER_OR_KEYWORD,
+    IDENTIFIER,
+    BREAK,
+    DO,
+    INSTANCEOF,
+    TYPEOF,
+    CASE,
+    ELSE,
+    NEW,
+    VAR,
+    CATCH,
+    FINALLY,
+    RETURN,
+    VOID,
+    CONTINUE,
+    FOR,
+    SWITCH,
+    WHILE,
+    DEBUGGER,
+    FUNCTION,
+    THIS,
+    WITH,
+    DEFAULT,
+    IF,
+    THROW,
+    DELETE,
+    IN,
+    TRY,
+    TRUE,
+    FALSE,
+    NULL_,
     NUMBER,
     STRING,
-    PUNCTUATOR,
+    OPEN_BRACE,
+    CLOSE_BRACE,
+    OPEN_PAREN,
+    CLOSE_PAREN,
+    OPEN_BRACKET,
+    CLOSE_BRACKET,
+    DOT,
+    SEMICOLON,
+    COMMA,
+    LESS_THAN,
+    GREATER_THAN,
+    LESS_THAN_OR_EQUAL,
+    GREATER_THAN_OR_EQUAL,
+    EQUAL,
+    NOT_EQUAL,
+    STRICT_EQUAL,
+    STRICT_NOT_EQUAL,
+    PLUS,
+    MINUS,
+    MULTIPLY,
+    DIVIDE,
+    MODULO,
+    INCREMENT,
+    DECREMENT,
+    LEFT_SHIFT,
+    RIGHT_SHIFT,
+    UNSIGNED_RIGHT_SHIFT,
+    BITWISE_AND,
+    BITWISE_OR,
+    BITWISE_XOR,
+    BITWISE_NOT,
+    LOGICAL_AND,
+    LOGICAL_OR,
+    LOGICAL_NOT,
+    QUESTION_MARK,
+    COLON,
+    ASSIGNMENT,
+    PLUS_ASSIGNMENT,
+    MINUS_ASSIGNMENT,
+    MULTIPLY_ASSIGNMENT,
+    DIVIDE_ASSIGNMENT,
+    MODULO_ASSIGNMENT,
+    LEFT_SHIFT_ASSIGNMENT,
+    RIGHT_SHIFT_ASSIGNMENT,
+    UNSIGNED_RIGHT_SHIFT_ASSIGNMENT,
+    BITWISE_AND_ASSIGNMENT,
+    BITWISE_OR_ASSIGNMENT,
+    BITWISE_XOR_ASSIGNMENT,
     END_OF_FILE,
+    LINE_TERMINATOR,
     ERROR
   };
   Type type;
-  std::size_t line;
-  std::size_t column;
   std::size_t length; // bytes
-  const std::uint8_t *start;
+  const char *start;
 
   Token() = delete;
-  Token(Type type, std::size_t line, std::size_t column, std::size_t length,
-        const std::uint8_t *start)
-      : type(type), line(line), column(column), length(length), start(start) {}
+  Token(Type type, std::size_t length, const char *start)
+      : type(type), length(length), start(start) {}
 };
 
-/// @brief Retrieves the next ECMAScript token from a UTF-8 encoded string.
-/// Skips whitespace and comments.
-/// @param buffer The string buffer to read from.
-/// @return The next token.
-[[nodiscard]] Token next_token(std::uint8_t *&buffer) noexcept;
+struct Keyword {
+  const char *keyword;
+  Token::Type type;
+
+  Keyword(const char *keyword, Token::Type type)
+      : keyword(keyword), type(type) {}
+};
+
+const Keyword KEYWORDS[] = {
+    Keyword("break", Token::Type::BREAK),
+    Keyword("do", Token::Type::DO),
+    Keyword("instanceof", Token::Type::INSTANCEOF),
+    Keyword("typeof", Token::Type::TYPEOF),
+    Keyword("case", Token::Type::CASE),
+    Keyword("else", Token::Type::ELSE),
+    Keyword("new", Token::Type::NEW),
+    Keyword("var", Token::Type::VAR),
+    Keyword("catch", Token::Type::CATCH),
+    Keyword("finally", Token::Type::FINALLY),
+    Keyword("return", Token::Type::RETURN),
+    Keyword("void", Token::Type::VOID),
+    Keyword("continue", Token::Type::CONTINUE),
+    Keyword("for", Token::Type::FOR),
+    Keyword("switch", Token::Type::SWITCH),
+    Keyword("while", Token::Type::WHILE),
+    Keyword("debugger", Token::Type::DEBUGGER),
+    Keyword("function", Token::Type::FUNCTION),
+    Keyword("this", Token::Type::THIS),
+    Keyword("with", Token::Type::WITH),
+    Keyword("default", Token::Type::DEFAULT),
+    Keyword("if", Token::Type::IF),
+    Keyword("throw", Token::Type::THROW),
+    Keyword("delete", Token::Type::DELETE),
+    Keyword("in", Token::Type::IN),
+    Keyword("try", Token::Type::TRY),
+    Keyword("true", Token::Type::TRUE),
+    Keyword("false", Token::Type::FALSE),
+    Keyword("null", Token::Type::NULL_),
+};
+
+/// @brief Separates an ASCII encoded string into ECMAScript tokens.
+class Lexer {
+private:
+  const char *m_buffer_start;
+  const char *m_cursor;
+
+  void do_line_comment() noexcept;
+  std::optional<Token> do_block_comment() noexcept;
+  Token do_identifier_or_keyword() noexcept;
+  Token do_number() noexcept;
+  Token do_hexadecimal() noexcept;
+  Token do_string() noexcept;
+  Token do_punctuator() noexcept;
+
+public:
+  Lexer(const char *buffer) : m_buffer_start(buffer), m_cursor(buffer) {}
+  /// @brief Retrieves the next ECMAScript token from the string. Skips
+  /// whitespace and comments.
+  /// @return The next token.
+  [[nodiscard]] Token next_token() noexcept;
+};
 
 } // namespace es
 

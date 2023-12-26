@@ -1,213 +1,247 @@
 #include <catch2/catch_test_macros.hpp>
 #include <tiniest/lex.hpp>
 
-TEST_CASE("next_utf8 behaves correctly") {
-  SECTION("Single-byte UTF-8 character") {
-    const std::uint8_t *input = (std::uint8_t *) "A";
-    const es::unicode_char expected = 'A';
-    REQUIRE(es::next_utf8(input) == expected);
+TEST_CASE("Character indicators") {
+  SECTION("Whitespace") {
+    REQUIRE(es::is_whitespace(' '));
+    REQUIRE(es::is_whitespace('\t'));
+    REQUIRE(es::is_whitespace('\v'));
+    REQUIRE(es::is_whitespace('\f'));
+    REQUIRE_FALSE(es::is_whitespace('\n'));
+    REQUIRE_FALSE(es::is_whitespace('\r'));
+    REQUIRE_FALSE(es::is_whitespace('a'));
   }
-
-  SECTION("Two-byte UTF-8 character") {
-    const std::uint8_t *input = (std::uint8_t *) u8"¢";
-    const es::unicode_char expected = 0x00A2;
-    REQUIRE(es::next_utf8(input) == expected);
+  SECTION("Line terminators") {
+    REQUIRE(es::is_line_terminator('\n'));
+    REQUIRE(es::is_line_terminator('\r'));
+    REQUIRE_FALSE(es::is_line_terminator(' '));
+    REQUIRE_FALSE(es::is_line_terminator('\t'));
+    REQUIRE_FALSE(es::is_line_terminator('\v'));
+    REQUIRE_FALSE(es::is_line_terminator('\f'));
   }
-
-  SECTION("Three-byte UTF-8 character") {
-    const std::uint8_t *input = (std::uint8_t *) u8"€";
-    const es::unicode_char expected = 0x20AC;
-    REQUIRE(es::next_utf8(input) == expected);
-  }
-
-  SECTION("Four-byte UTF-8 character") {
-    const std::uint8_t *input = (std::uint8_t *) u8"𐍈";
-    const es::unicode_char expected = 0x10348;
-    REQUIRE(es::next_utf8(input) == expected);
-  }
-
-  SECTION("Invalid UTF-8 character") {
-    const std::uint8_t *input = (std::uint8_t *) "\xFF";
-    const es::unicode_char expected = ~0;
-    REQUIRE(es::next_utf8(input) == expected);
-  }
-
-  SECTION("Empty string") {
-    const std::uint8_t *input = (std::uint8_t *) "";
-    const es::unicode_char expected = 0;
-    REQUIRE(es::next_utf8(input) == expected);
-  }
-
-  SECTION("Buffer underflow") {
-    const std::uint8_t *input = (std::uint8_t *) "\xC2";
-    const es::unicode_char expected = ~0;
-    REQUIRE(es::next_utf8(input) == expected);
-  }
-
-  SECTION("Null pointer") {
-    const std::uint8_t *input = nullptr;
-    const es::unicode_char expected = ~0;
-    REQUIRE(es::next_utf8(input) == expected);
-  }
-
-  SECTION("Longer section of text") {
-    const std::uint8_t *input = (std::uint8_t *) u8"Я люблю колбасу";
-    const es::unicode_char expected[] = {
-        0x042F, 0x0020, 0x043B, 0x044E, 0x0431, 0x043B, 0x044E, 0x0020,
-        0x043A, 0x043E, 0x043B, 0x0431, 0x0430, 0x0441, 0x0443, 0x00};
-    for (auto &e : expected) {
-      REQUIRE(es::next_utf8(input) == e);
-    }
+  SECTION("Identifier starts") {
+    REQUIRE(es::is_identifier_start('$'));
+    REQUIRE(es::is_identifier_start('_'));
+    REQUIRE(es::is_identifier_start('a'));
+    REQUIRE(es::is_identifier_start('z'));
+    REQUIRE(es::is_identifier_start('A'));
+    REQUIRE(es::is_identifier_start('Z'));
+    REQUIRE_FALSE(es::is_identifier_start('0'));
+    REQUIRE_FALSE(es::is_identifier_start('9'));
   }
 }
 
-TEST_CASE("is_whitespace behaves correctly") {
-  SECTION("Basic types") {
-    REQUIRE(es::is_whitespace(0x09));
-    REQUIRE(es::is_whitespace(0x0B));
-    REQUIRE(es::is_whitespace(0x0C));
-    REQUIRE(es::is_whitespace(0x20));
-    REQUIRE(es::is_whitespace(0xA0));
-    REQUIRE(es::is_whitespace(0xFEFF));
+TEST_CASE("Literals (happy path)") {
+  SECTION("Hexadecimal") {
+    const char *input = "0x1234567890abcdefABCDEF";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 24);
   }
-
-  SECTION("Various widths of spaces") {
-    REQUIRE(es::is_whitespace(0x2000));
-    REQUIRE(es::is_whitespace(0x2001));
-    REQUIRE(es::is_whitespace(0x2002));
-    REQUIRE(es::is_whitespace(0x2003));
-    REQUIRE(es::is_whitespace(0x2004));
-    REQUIRE(es::is_whitespace(0x2005));
-    REQUIRE(es::is_whitespace(0x2006));
-    REQUIRE(es::is_whitespace(0x2007));
-    REQUIRE(es::is_whitespace(0x2008));
-    REQUIRE(es::is_whitespace(0x2009));
-    REQUIRE(es::is_whitespace(0x200A));
+  SECTION("Decimal") {
+    const char *input = "1234567890";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 10);
   }
-
-  SECTION("Other unicode spaces") {
-    REQUIRE(es::is_whitespace(0x1680));
-    REQUIRE(es::is_whitespace(0x202F));
-    REQUIRE(es::is_whitespace(0x205F));
-    REQUIRE(es::is_whitespace(0x3000));
+  SECTION("Floating point non-exponent") {
+    const char *input = "123.456";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 7);
   }
-
-  SECTION("Non-whitespace characters") {
-    REQUIRE(!es::is_whitespace(0x00));
-    REQUIRE(!es::is_whitespace(0x01));
-    REQUIRE(!es::is_whitespace(0x02));
-    REQUIRE(!es::is_whitespace(0x03));
-    REQUIRE(!es::is_whitespace(0x04));
-    REQUIRE(!es::is_whitespace(0x05));
-    REQUIRE(!es::is_whitespace(0x06));
-    REQUIRE(!es::is_whitespace(0x07));
-    REQUIRE(!es::is_whitespace(0x08));
-    REQUIRE(!es::is_whitespace(0x0A));
-    REQUIRE(!es::is_whitespace(0x0D));
-    REQUIRE(!es::is_whitespace(0x0E));
-    REQUIRE(!es::is_whitespace(0x0F));
-    REQUIRE(!es::is_whitespace(0x10));
-    REQUIRE(!es::is_whitespace(0x11));
-    REQUIRE(!es::is_whitespace(0x12));
-    REQUIRE(!es::is_whitespace(0x13));
+  SECTION("Floating point exponent") {
+    const char *input = "123.456e+789";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 12);
   }
-}
-
-TEST_CASE("put_utf8 behaves correctly") {
-  SECTION("Single-byte UTF-8 character") {
-    std::uint8_t buffer[1];
-    std::uint8_t* cursor = buffer;
-    std::size_t space_remaining = 1;
-    es::put_utf8('A', cursor, space_remaining);
-    REQUIRE(buffer[0] == 'A');
-    REQUIRE(cursor == buffer + 1);
-    REQUIRE(space_remaining == 0);
+  SECTION("Floating point exponent (uppercase)") {
+    const char *input = "123.456E+789";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 12);
   }
-
-  SECTION("Two-byte UTF-8 character") {
-    std::uint8_t buffer[2];
-    std::uint8_t* cursor = buffer;
-    std::size_t space_remaining = 2;
-    es::put_utf8(0x00A2, cursor, space_remaining);
-    REQUIRE(buffer[0] == 0xC2);
-    REQUIRE(buffer[1] == 0xA2);
-    REQUIRE(cursor == buffer + 2);
-    REQUIRE(space_remaining == 0);
+  SECTION("Floating point exponent (negative)") {
+    const char *input = "123.456e-789";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 12);
   }
-
-  SECTION("Three-byte UTF-8 character") {
-    std::uint8_t buffer[3];
-    std::uint8_t* cursor = buffer;
-    std::size_t space_remaining = 3;
-    es::put_utf8(0x20AC, cursor, space_remaining);
-    REQUIRE(buffer[0] == 0xE2);
-    REQUIRE(buffer[1] == 0x82);
-    REQUIRE(buffer[2] == 0xAC);
-    REQUIRE(cursor == buffer + 3);
-    REQUIRE(space_remaining == 0);
+  SECTION("Floating point exponent (negative uppercase)") {
+    const char *input = "123.456E-789";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::NUMBER);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 12);
   }
-
-  SECTION("Four-byte UTF-8 character") {
-    std::uint8_t buffer[4];
-    std::uint8_t* cursor = buffer;
-    std::size_t space_remaining = 4;
-    es::put_utf8(0x10348, cursor, space_remaining);
-    REQUIRE(buffer[0] == 0xF0);
-    REQUIRE(buffer[1] == 0x90);
-    REQUIRE(buffer[2] == 0x8D);
-    REQUIRE(buffer[3] == 0x88);
-    REQUIRE(cursor == buffer + 4);
-    REQUIRE(space_remaining == 0);
+  SECTION("Basic string") {
+    const char *input = "\"Hello, world!\"";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::STRING);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 15);
   }
-
-  SECTION("Invalid UTF-8 character") {
-    std::uint8_t buffer[1];
-    std::uint8_t* cursor = buffer;
-    std::size_t space_remaining = 1;
-    es::put_utf8(0x110000, cursor, space_remaining);
-    REQUIRE(cursor == buffer);
-    REQUIRE(space_remaining == 1);
+  SECTION("String with escape codes") {
+    const char *input = "\"Hello,\\nworld!\"";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::STRING);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 16);
   }
-
-  SECTION("Buffer overflow") {
-    std::uint8_t buffer[1];
-    std::uint8_t* cursor = buffer;
-    std::size_t space_remaining = 1;
-    es::put_utf8(0x20AC, cursor, space_remaining);
-    REQUIRE(cursor == buffer);
-    REQUIRE(space_remaining == 1);
+  SECTION("String with line terminator") {
+    const char *input = "\"Hello, \\\nworld!\"";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::STRING);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 17);
   }
 }
 
-TEST_CASE("is_line_terminator behaves correctly") {
-  SECTION("Basic types") {
-    REQUIRE(es::is_line_terminator(0x0A));
-    REQUIRE(es::is_line_terminator(0x0D));
+TEST_CASE("Integration") {
+  SECTION("Single statement") {
+    const char *input = "var x = Serial.readLine();";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::VAR);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 3);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 4);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::ASSIGNMENT);
+    REQUIRE(token.start == input + 6);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 8);
+    REQUIRE(token.length == 6);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::DOT);
+    REQUIRE(token.start == input + 14);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 15);
+    REQUIRE(token.length == 8);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::OPEN_PAREN);
+    REQUIRE(token.start == input + 23);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::CLOSE_PAREN);
+    REQUIRE(token.start == input + 24);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::SEMICOLON);
+    REQUIRE(token.start == input + 25);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::END_OF_FILE);
+    REQUIRE(token.start == input + 26);
+    REQUIRE(token.length == 0);
   }
 
-  SECTION("Other unicode line terminators") {
-    REQUIRE(es::is_line_terminator(0x2028));
-    REQUIRE(es::is_line_terminator(0x2029));
-  }
-
-  SECTION("Non-line-terminator characters") {
-    REQUIRE(!es::is_line_terminator(0x00));
-    REQUIRE(!es::is_line_terminator(0x01));
-    REQUIRE(!es::is_line_terminator(0x02));
-    REQUIRE(!es::is_line_terminator(0x03));
-    REQUIRE(!es::is_line_terminator(0x04));
-    REQUIRE(!es::is_line_terminator(0x05));
-    REQUIRE(!es::is_line_terminator(0x06));
-    REQUIRE(!es::is_line_terminator(0x07));
-    REQUIRE(!es::is_line_terminator(0x08));
-    REQUIRE(!es::is_line_terminator(0x09));
-    REQUIRE(!es::is_line_terminator(0x0B));
-    REQUIRE(!es::is_line_terminator(0x0C));
-    REQUIRE(!es::is_line_terminator(0x0E));
-    REQUIRE(!es::is_line_terminator(0x0F));
-    REQUIRE(!es::is_line_terminator(0x10));
-    REQUIRE(!es::is_line_terminator(0x11));
-    REQUIRE(!es::is_line_terminator(0x12));
-    REQUIRE(!es::is_line_terminator(0x13));
+  SECTION("Simple function") {
+    const char *input = R"(
+      function add(a, b) {
+        return a + b;
+      }
+    )";
+    auto lexer = es::Lexer(input);
+    auto token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::LINE_TERMINATOR);
+    REQUIRE(token.start == input);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::FUNCTION);
+    REQUIRE(token.start == input + 7);
+    REQUIRE(token.length == 8);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 16);
+    REQUIRE(token.length == 3);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::OPEN_PAREN);
+    REQUIRE(token.start == input + 19);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 20);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::COMMA);
+    REQUIRE(token.start == input + 21);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 23);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::CLOSE_PAREN);
+    REQUIRE(token.start == input + 24);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::OPEN_BRACE);
+    REQUIRE(token.start == input + 26);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::LINE_TERMINATOR);
+    REQUIRE(token.start == input + 27);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::RETURN);
+    REQUIRE(token.start == input + 36);
+    REQUIRE(token.length == 6);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 43);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::PLUS);
+    REQUIRE(token.start == input + 45);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::IDENTIFIER);
+    REQUIRE(token.start == input + 47);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::SEMICOLON);
+    REQUIRE(token.start == input + 48);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::LINE_TERMINATOR);
+    REQUIRE(token.start == input + 49);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::CLOSE_BRACE);
+    REQUIRE(token.start == input + 56);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::LINE_TERMINATOR);
+    REQUIRE(token.start == input + 57);
+    REQUIRE(token.length == 1);
+    token = lexer.next_token();
+    REQUIRE(token.type == es::Token::Type::END_OF_FILE);
+    REQUIRE(token.start == input + 62);
+    REQUIRE(token.length == 0);
   }
 }
